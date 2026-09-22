@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Product Details — GowsikaMart</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div id="bm-header"></div>
+
+<div class="container">
+  <div class="breadcrumb"><a href="index.html">Home</a> / <a href="shop.html">Shop</a> / <span id="breadcrumb-name">Product</span></div>
+
+  <div id="pd-content">
+    <p>Loading product...</p>
+  </div>
+
+  <section class="section" id="related-section" style="display:none;">
+    <div class="section-title"><h2>Related Products</h2></div>
+    <div class="product-grid" id="related-grid"></div>
+  </section>
+
+  <section class="section">
+    <div class="section-title"><h2>Customer Reviews</h2></div>
+    <div id="reviews-block">
+      <p style="color:#888;">No reviews yet for this product. Be the first to shop and share your feedback!</p>
+    </div>
+  </section>
+</div>
+
+<div id="bm-footer"></div>
+
+<script src="js/api.js"></script>
+<script src="js/common.js"></script>
+<script>
+const productId = new URLSearchParams(window.location.search).get("id");
+
+function renderProduct(p) {
+  document.getElementById("breadcrumb-name").textContent = p.name;
+  document.title = p.name + " — GowsikaMart";
+
+  const inStock = p.stockQuantity > 0;
+
+  document.getElementById("pd-content").innerHTML = `
+    <div class="pd-layout">
+      <div class="pd-image">
+        <img src="${productImgSrc(p)}" alt="${p.name}" onerror="this.src='${placeholderImage(p.name)}'"/>
+      </div>
+      <div>
+        <div class="pd-brand">${p.brand || ""} · ${p.category ? p.category.name : ""}</div>
+        <h1 class="pd-title">${p.name}</h1>
+        <div class="product-rating" style="font-size:13px;">${p.rating.toFixed(1)} ★ (${p.ratingCount} ratings)</div>
+
+        <div class="pd-price-block">
+          <span class="final">${formatCurrency(p.finalPrice)}</span>
+          ${p.discountPercent > 0 ? `<span class="price-original">${formatCurrency(p.price)}</span><span class="price-discount">${p.discountPercent}% off</span>` : ""}
+        </div>
+
+        <div class="pd-stock ${inStock ? "in" : "out"}">
+          ${inStock ? `✔ In Stock (${p.stockQuantity} available)` : "✘ Out of Stock"}
+        </div>
+
+        <div class="qty-selector">
+          <button type="button" id="qty-minus">−</button>
+          <input type="number" id="qty-input" value="1" min="1" max="${p.stockQuantity}" />
+          <button type="button" id="qty-plus">+</button>
+        </div>
+
+        <div class="pd-actions">
+          <button class="btn btn-primary" id="add-cart-btn" ${!inStock ? "disabled" : ""}>Add to Cart</button>
+          <button class="btn btn-accent" id="buy-now-btn" ${!inStock ? "disabled" : ""}>Buy Now</button>
+        </div>
+
+        <h3 style="font-size:15px;">Product Description</h3>
+        <p class="pd-desc">${p.description || "No description available."}</p>
+      </div>
+    </div>
+  `;
+
+  document.getElementById("qty-minus").addEventListener("click", () => {
+    const input = document.getElementById("qty-input");
+    input.value = Math.max(1, parseInt(input.value || "1") - 1);
+  });
+  document.getElementById("qty-plus").addEventListener("click", () => {
+    const input = document.getElementById("qty-input");
+    input.value = Math.min(p.stockQuantity, parseInt(input.value || "1") + 1);
+  });
+
+  document.getElementById("add-cart-btn").addEventListener("click", async () => {
+    if (!isLoggedIn()) { window.location.href = `login.html?redirect=product.html?id=${p.id}`; return; }
+    const qty = parseInt(document.getElementById("qty-input").value || "1");
+    try {
+      await Api.addToCart(p.id, qty);
+      alert("Added to cart!");
+      renderHeader();
+    } catch (err) { alert(err.message); }
+  });
+
+  document.getElementById("buy-now-btn").addEventListener("click", async () => {
+    if (!isLoggedIn()) { window.location.href = `login.html?redirect=product.html?id=${p.id}`; return; }
+    const qty = parseInt(document.getElementById("qty-input").value || "1");
+    try {
+      await Api.addToCart(p.id, qty);
+      window.location.href = "checkout.html";
+    } catch (err) { alert(err.message); }
+  });
+
+  // Related products
+  if (p.category) {
+    Api.getByCategory(p.category.id).then(list => {
+      const related = list.filter(x => x.id !== p.id).slice(0, 5);
+      if (related.length > 0) {
+        document.getElementById("related-section").style.display = "block";
+        document.getElementById("related-grid").innerHTML = related.map(productCardHtml).join("");
+      }
+    }).catch(() => {});
+  }
+}
+
+Api.getProduct(productId)
+  .then(renderProduct)
+  .catch(err => {
+    document.getElementById("pd-content").innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+  });
+</script>
+</body>
+</html>

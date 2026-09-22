@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Checkout — GowsikaMart</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div id="bm-header"></div>
+
+<div class="container">
+  <div class="breadcrumb"><a href="index.html">Home</a> / <a href="cart.html">Cart</a> / <span>Checkout</span></div>
+  <h2 style="margin-bottom:16px;">Checkout</h2>
+
+  <div id="checkout-content"><p>Loading...</p></div>
+</div>
+
+<div id="bm-footer"></div>
+
+<script src="js/api.js"></script>
+<script src="js/common.js"></script>
+<script>
+const DELIVERY_CHARGE = 40;
+const FREE_DELIVERY_THRESHOLD = 499;
+let cartItemsCache = [];
+
+async function loadCheckout() {
+  if (!requireLogin()) return;
+  const content = document.getElementById("checkout-content");
+
+  try {
+    const [items, profile] = await Promise.all([Api.getCart(), Api.getProfile()]);
+    cartItemsCache = items;
+
+    if (items.length === 0) {
+      content.innerHTML = `<div class="empty-state"><div class="icon">🛒</div><p>Your cart is empty. Add some products before checking out.</p><a href="shop.html" class="btn btn-primary" style="margin-top:10px; display:inline-block;">Shop Now</a></div>`;
+      return;
+    }
+
+    const subtotal = items.reduce((sum, i) => sum + (i.product.finalPrice * i.quantity), 0);
+    const delivery = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_CHARGE;
+    const total = subtotal + delivery;
+
+    content.innerHTML = `
+      <div class="checkout-layout">
+        <div>
+          <div class="checkout-card">
+            <h3>Delivery Details</h3>
+            <form id="checkout-form">
+              <div class="form-row">
+                <div class="form-group"><label>Full Name</label><input type="text" id="fullName" required value="${profile.fullName || ""}"/></div>
+                <div class="form-group"><label>Phone</label><input type="tel" id="phone" required value="${profile.phone || ""}"/></div>
+              </div>
+              <div class="form-group"><label>Email</label><input type="email" id="email" required value="${profile.email || ""}"/></div>
+              <div class="form-group"><label>Address</label><input type="text" id="address" required placeholder="House no, street, locality"/></div>
+              <div class="form-row">
+                <div class="form-group"><label>City</label><input type="text" id="city" required/></div>
+                <div class="form-group"><label>State</label><input type="text" id="state" required/></div>
+                <div class="form-group"><label>Pincode</label><input type="text" id="pincode" required maxlength="6"/></div>
+              </div>
+            </form>
+          </div>
+
+          <div class="checkout-card">
+            <h3>Payment Method</h3>
+            <label class="payment-option"><input type="radio" name="payment" value="COD" checked/> Cash on Delivery</label>
+            <label class="payment-option"><input type="radio" name="payment" value="UPI"/> UPI (Demo)</label>
+            <label class="payment-option"><input type="radio" name="payment" value="CARD"/> Credit / Debit Card (Demo)</label>
+          </div>
+        </div>
+
+        <div class="checkout-card">
+          <h3>Order Summary</h3>
+          ${items.map(i => `<div class="order-line"><span>${i.product.name} × ${i.quantity}</span><span>${formatCurrency(i.product.finalPrice * i.quantity)}</span></div>`).join("")}
+          <div class="summary-row total" style="margin-top:14px;"><span>Subtotal</span><span>${formatCurrency(subtotal)}</span></div>
+          <div class="summary-row"><span>Delivery</span><span>${delivery === 0 ? "FREE" : formatCurrency(delivery)}</span></div>
+          <div class="summary-row total"><span>Total</span><span>${formatCurrency(total)}</span></div>
+          <button class="btn btn-accent btn-block" id="place-order-btn" style="margin-top:14px;">Place Order</button>
+          <div id="checkout-alert"></div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById("place-order-btn").addEventListener("click", placeOrder);
+  } catch (err) {
+    content.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+  }
+}
+
+async function placeOrder() {
+  const form = document.getElementById("checkout-form");
+  if (!form.checkValidity()) { form.reportValidity(); return; }
+
+  const btn = document.getElementById("place-order-btn");
+  btn.disabled = true;
+  btn.textContent = "Placing Order...";
+
+  const payload = {
+    fullName: document.getElementById("fullName").value.trim(),
+    email: document.getElementById("email").value.trim(),
+    phone: document.getElementById("phone").value.trim(),
+    address: document.getElementById("address").value.trim(),
+    city: document.getElementById("city").value.trim(),
+    state: document.getElementById("state").value.trim(),
+    pincode: document.getElementById("pincode").value.trim(),
+    paymentMethod: document.querySelector('input[name="payment"]:checked').value
+  };
+
+  try {
+    const order = await Api.placeOrder(payload);
+    console.log("ORDER RESPONSE:", order);
+    window.location.href = `order-confirmation.html?id=${order.id}`;
+  } catch (err) {
+    document.getElementById("checkout-alert").innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+    btn.disabled = false;
+    btn.textContent = "Place Order";
+  }
+}
+
+loadCheckout();
+</script>
+</body>
+</html>

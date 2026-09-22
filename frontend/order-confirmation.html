@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Order Confirmed — GowsikaMart</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div id="bm-header"></div>
+
+<div class="container">
+  <div id="confirmation-content" style="max-width: 600px; margin: 50px auto; text-align:center;">
+    <p>Loading order details...</p>
+  </div>
+</div>
+
+<div id="bm-footer"></div>
+
+<script src="js/api.js"></script>
+<script src="js/common.js"></script>
+<script>
+const orderId = new URLSearchParams(window.location.search).get("id");
+
+async function loadOrder() {
+  if (!requireLogin()) return;
+  const el = document.getElementById("confirmation-content");
+  try {
+    const order = await Api.getOrder(orderId);
+    el.innerHTML = `
+      <div style="font-size:56px;">✅</div>
+      <h2>Order Placed Successfully!</h2>
+      <p style="color:#666;">Thank you for shopping with GowsikaMart. Your order ID is <strong>#${order.id}</strong>.</p>
+      <div class="checkout-card" style="text-align:left; margin-top:24px;">
+        <h3>Order Summary</h3>
+        ${order.items.map(i => `<div class="order-line"><span>${i.productName} × ${i.quantity}</span><span>${formatCurrency(i.price * i.quantity)}</span></div>`).join("")}
+        <div class="summary-row total"><span>Total Paid</span><span>${formatCurrency(order.totalAmount)}</span></div>
+        <div class="summary-row"><span>Payment Method</span><span>${order.paymentMethod}</span></div>
+        <div class="summary-row"><span>Delivery Address</span><span style="text-align:right;">${order.shippingAddress}, ${order.city}, ${order.state} - ${order.pincode}</span></div>
+      </div>
+      <div style="margin-top:24px; display:flex; gap:12px; justify-content:center;">
+        <a href="account-orders.html" class="btn btn-primary">Track Order</a>
+        <a href="shop.html" class="btn btn-outline">Continue Shopping</a>
+      </div>
+    `;
+  } catch (err) {
+    el.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+  }
+}
+loadOrder();
+</script>
+</body>
+</html>

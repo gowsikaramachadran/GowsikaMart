@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Manage Orders — GowsikaMart Admin</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div class="admin-shell">
+  <aside class="admin-sidebar">
+    <div class="brand">Gowsika<span style="color:#ff6f1e;">Mart</span> Admin</div>
+    <a href="admin-dashboard.html">📊 Dashboard</a>
+    <a href="admin-products.html">📦 Products</a>
+    <a href="admin-orders.html" class="active">🧾 Orders</a>
+    <a href="admin-users.html">👥 Users</a>
+    <a href="index.html">🏬 View Storefront</a>
+    <a href="#" id="admin-logout">🚪 Logout</a>
+  </aside>
+
+  <main class="admin-main">
+    <h2 style="margin-top:0;">Manage Orders</h2>
+
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>Order ID</th><th>Customer</th><th>Items</th><th>Total</th><th>Status</th><th>Date</th><th>Update Status</th></tr></thead>
+        <tbody id="orders-body"><tr><td colspan="7">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/common.js"></script>
+<script>
+const STATUS_OPTIONS = ["PLACED", "CONFIRMED", "PACKED", "SHIPPED", "DELIVERED", "CANCELLED"];
+
+async function loadOrders() {
+  const body = document.getElementById("orders-body");
+  try {
+    const orders = await Api.adminGetOrders();
+    if (orders.length === 0) {
+      body.innerHTML = `<tr><td colspan="7">No orders yet.</td></tr>`;
+      return;
+    }
+    body.innerHTML = orders.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)).map(o => `
+      <tr>
+        <td>#${o.id}</td>
+        <td>${o.customerName}<br/><span style="color:#888; font-size:12px;">${o.customerPhone}</span></td>
+        <td>${o.items.length} item(s)</td>
+        <td>${formatCurrency(o.totalAmount)}</td>
+        <td><span class="status-pill status-${o.status}">${o.status}</span></td>
+        <td>${new Date(o.createdAt).toLocaleDateString("en-IN")}</td>
+        <td>
+          <select onchange="updateStatus(${o.id}, this.value)">
+            ${STATUS_OPTIONS.map(s => `<option value="${s}" ${s === o.status ? "selected" : ""}>${s}</option>`).join("")}
+          </select>
+        </td>
+      </tr>
+    `).join("");
+  } catch (err) {
+    body.innerHTML = `<tr><td colspan="7">${err.message}</td></tr>`;
+  }
+}
+
+async function updateStatus(orderId, status) {
+  try {
+    await Api.adminUpdateOrderStatus(orderId, status);
+    loadOrders();
+  } catch (err) { alert(err.message); }
+}
+
+if (requireAdmin()) loadOrders();
+
+document.getElementById("admin-logout").addEventListener("click", (e) => {
+  e.preventDefault();
+  clearSession();
+  window.location.href = "index.html";
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Account — GowsikaMart</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div id="bm-header"></div>
+
+<div class="container">
+  <div class="breadcrumb"><a href="index.html">Home</a> / <span>My Account</span></div>
+
+  <div class="account-layout">
+    <nav class="account-nav">
+      <a href="account.html" class="active">Profile Details</a>
+      <a href="account-orders.html">Order History</a>
+      <a href="#" id="logout-side">Logout</a>
+    </nav>
+
+    <div class="account-panel">
+      <h3 style="margin-top:0;">Profile Details</h3>
+      <div id="profile-alert"></div>
+      <form id="profile-form">
+        <div class="form-row">
+          <div class="form-group"><label>Full Name</label><input type="text" id="fullName" required/></div>
+          <div class="form-group"><label>Phone</label><input type="tel" id="phone" required/></div>
+        </div>
+        <div class="form-group"><label>Email</label><input type="email" id="email" disabled/></div>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </form>
+
+      <hr style="margin:28px 0; border:none; border-top:1px solid var(--border-color);"/>
+
+      <h3>Change Password</h3>
+      <div id="password-alert"></div>
+      <form id="password-form">
+        <div class="form-group"><label>Current Password</label><input type="password" id="currentPassword" required/></div>
+        <div class="form-group"><label>New Password</label><input type="password" id="newPassword" required minlength="6"/></div>
+        <button type="submit" class="btn btn-outline">Change Password</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div id="bm-footer"></div>
+
+<script src="js/api.js"></script>
+<script src="js/common.js"></script>
+<script>
+if (requireLogin()) {
+  Api.getProfile().then(profile => {
+    document.getElementById("fullName").value = profile.fullName;
+    document.getElementById("phone").value = profile.phone;
+    document.getElementById("email").value = profile.email;
+  }).catch(err => alert(err.message));
+}
+
+document.getElementById("logout-side").addEventListener("click", (e) => {
+  e.preventDefault();
+  clearSession();
+  window.location.href = "index.html";
+});
+
+document.getElementById("profile-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const alertBox = document.getElementById("profile-alert");
+  try {
+    await Api.updateProfile({
+      fullName: document.getElementById("fullName").value.trim(),
+      phone: document.getElementById("phone").value.trim()
+    });
+    alertBox.innerHTML = `<div class="alert alert-success">Profile updated successfully.</div>`;
+    renderHeader();
+  } catch (err) {
+    alertBox.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+  }
+});
+
+document.getElementById("password-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const alertBox = document.getElementById("password-alert");
+  try {
+    await Api.changePassword({
+      currentPassword: document.getElementById("currentPassword").value,
+      newPassword: document.getElementById("newPassword").value
+    });
+    alertBox.innerHTML = `<div class="alert alert-success">Password changed successfully.</div>`;
+    document.getElementById("password-form").reset();
+  } catch (err) {
+    alertBox.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+  }
+});
+</script>
+</body>
+</html>

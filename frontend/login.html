@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Login — GowsikaMart</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div id="bm-header"></div>
+
+<div class="auth-wrapper">
+  <div class="auth-card">
+    <h2>Welcome Back</h2>
+    <div class="sub">Login to your GowsikaMart account</div>
+
+    <div id="form-alert"></div>
+
+    <form id="login-form">
+      <div class="form-group">
+        <label for="email">Email / Username</label>
+        <input type="email" id="email" required placeholder="you@example.com" />
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <div class="pw-wrapper">
+          <input type="password" id="password" required placeholder="Enter your password" />
+          <button type="button" class="toggle-pw" id="toggle-pw">SHOW</button>
+        </div>
+      </div>
+
+      <div class="remember-row">
+        <label style="display:flex; align-items:center; gap:6px;">
+          <input type="checkbox" id="remember" /> Remember Me
+        </label>
+        <a href="#" id="forgot-link" style="color: var(--brand-primary); font-weight:600;">Forgot Password?</a>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block" id="login-btn">Login</button>
+    </form>
+
+    <div class="form-footer-link">
+      Don't have an account? <a href="register.html">Register</a>
+    </div>
+  </div>
+</div>
+
+<div id="bm-footer"></div>
+
+<script src="js/api.js"></script>
+<script src="js/common.js"></script>
+<script>
+document.getElementById("toggle-pw").addEventListener("click", () => {
+  const pw = document.getElementById("password");
+  const btn = document.getElementById("toggle-pw");
+  if (pw.type === "password") { pw.type = "text"; btn.textContent = "HIDE"; }
+  else { pw.type = "password"; btn.textContent = "SHOW"; }
+});
+
+document.getElementById("forgot-link").addEventListener("click", (e) => {
+  e.preventDefault();
+  alert("Please contact GowsikaMart support to reset your password.");
+});
+
+document.getElementById("login-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const alertBox = document.getElementById("form-alert");
+  const btn = document.getElementById("login-btn");
+  alertBox.innerHTML = "";
+
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+
+  btn.disabled = true;
+  btn.textContent = "Logging in...";
+
+  try {
+    const res = await Api.login({ email, password });
+    saveSession(res);
+
+    const params = new URLSearchParams(window.location.search);
+    const redirect = params.get("redirect");
+    window.location.href = redirect ? redirect : (res.role === "ADMIN" ? "admin-dashboard.html" : "index.html");
+  } catch (err) {
+    alertBox.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+    btn.disabled = false;
+    btn.textContent = "Login";
+  }
+});
+</script>
+</body>
+</html>

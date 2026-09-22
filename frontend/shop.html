@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Shop All Products — GowsikaMart</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div id="bm-header"></div>
+
+<div class="container">
+  <div class="breadcrumb"><a href="index.html">Home</a> / <span id="breadcrumb-current">Shop</span></div>
+
+  <div class="shop-layout">
+    <aside class="filters-panel">
+      <h4>Category</h4>
+      <div class="filter-group" id="filter-categories"></div>
+
+      <h4>Brand</h4>
+      <div class="filter-group" id="filter-brands"></div>
+
+      <h4>Price Range</h4>
+      <div class="filter-group">
+        <div class="filter-option"><label>Min ₹ <input type="number" id="min-price" style="width:80px; margin-left:6px;" /></label></div>
+        <div class="filter-option"><label>Max ₹ <input type="number" id="max-price" style="width:80px; margin-left:6px;" /></label></div>
+      </div>
+
+      <h4>Minimum Rating</h4>
+      <div class="filter-group" id="filter-rating">
+        <label class="filter-option"><input type="radio" name="rating" value="" checked /> All Ratings</label>
+        <label class="filter-option"><input type="radio" name="rating" value="4" /> 4★ &amp; above</label>
+        <label class="filter-option"><input type="radio" name="rating" value="3" /> 3★ &amp; above</label>
+      </div>
+
+      <h4>Availability</h4>
+      <div class="filter-group">
+        <label class="filter-option"><input type="checkbox" id="in-stock-only" /> In Stock Only</label>
+      </div>
+
+      <button class="btn btn-primary btn-block" id="apply-filters">Apply Filters</button>
+      <button class="btn btn-outline btn-block" id="clear-filters" style="margin-top:8px;">Clear All</button>
+    </aside>
+
+    <main>
+      <div class="shop-toolbar">
+        <span id="result-count" style="font-size:13.5px; color:#666;"></span>
+        <select id="sort-select">
+          <option value="">Sort: Featured</option>
+          <option value="price_low_high">Price: Low to High</option>
+          <option value="price_high_low">Price: High to Low</option>
+          <option value="rating">Customer Rating</option>
+          <option value="newest">Newest First</option>
+          <option value="discount">Discount</option>
+        </select>
+      </div>
+      <div class="product-grid" id="shop-grid"></div>
+    </main>
+  </div>
+</div>
+
+<div id="bm-footer"></div>
+
+<script src="js/api.js"></script>
+<script src="js/common.js"></script>
+<script>
+let allCategories = [];
+let allBrands = [];
+
+function getParams() {
+  return new URLSearchParams(window.location.search);
+}
+
+async function loadFilterOptions() {
+  allCategories = await Api.getCategories();
+  const catEl = document.getElementById("filter-categories");
+  const params = getParams();
+  const selectedCat = params.get("category") || "";
+
+  catEl.innerHTML = `<label class="filter-option"><input type="radio" name="cat" value="" ${!selectedCat ? "checked" : ""}/> All Categories</label>` +
+    allCategories.map(c => `<label class="filter-option"><input type="radio" name="cat" value="${c.id}" ${String(c.id) === selectedCat ? "checked" : ""}/> ${c.name}</label>`).join("");
+
+  const allProducts = await Api.getAllProducts();
+  allBrands = [...new Set(allProducts.map(p => p.brand).filter(Boolean))].sort();
+  const brandEl = document.getElementById("filter-brands");
+  brandEl.innerHTML = `<label class="filter-option"><input type="radio" name="brand" value="" checked/> All Brands</label>` +
+    allBrands.slice(0, 12).map(b => `<label class="filter-option"><input type="radio" name="brand" value="${b}"/> ${b}</label>`).join("");
+}
+
+function getSelectedRadio(name) {
+  const el = document.querySelector(`input[name="${name}"]:checked`);
+  return el ? el.value : "";
+}
+
+async function loadProducts() {
+  const grid = document.getElementById("shop-grid");
+  grid.innerHTML = "<p>Loading products...</p>";
+
+  const params = getParams();
+  const searchKeyword = params.get("search");
+
+  try {
+    let products;
+    if (searchKeyword) {
+      products = await Api.searchProducts(searchKeyword);
+      document.getElementById("breadcrumb-current").textContent = `Search: "${searchKeyword}"`;
+    } else {
+      const filterParams = {};
+      const cat = getSelectedRadio("cat");
+      const brand = getSelectedRadio("brand");
+      const rating = getSelectedRadio("rating");
+      const minPrice = document.getElementById("min-price").value;
+      const maxPrice = document.getElementById("max-price").value;
+      const inStock = document.getElementById("in-stock-only").checked;
+      const sortBy = document.getElementById("sort-select").value;
+
+      if (cat) filterParams.categoryId = cat;
+      if (brand) filterParams.brand = brand;
+      if (rating) filterParams.minRating = rating;
+      if (minPrice) filterParams.minPrice = minPrice;
+      if (maxPrice) filterParams.maxPrice = maxPrice;
+      if (inStock) filterParams.inStock = true;
+      if (sortBy) filterParams.sortBy = sortBy;
+
+      products = await Api.filterProducts(filterParams);
+
+      if (cat) {
+        const catObj = allCategories.find(c => String(c.id) === cat);
+        document.getElementById("breadcrumb-current").textContent = catObj ? catObj.name : "Shop";
+      } else {
+        document.getElementById("breadcrumb-current").textContent = "Shop";
+      }
+    }
+
+    document.getElementById("result-count").textContent = `${products.length} products found`;
+
+    if (products.length === 0) {
+      grid.innerHTML = `<div class="empty-state"><div class="icon">🔍</div><p>No products match your filters. Try adjusting them.</p></div>`;
+      return;
+    }
+    grid.innerHTML = products.map(productCardHtml).join("");
+  } catch (err) {
+    grid.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+  }
+}
+
+document.getElementById("apply-filters").addEventListener("click", loadProducts);
+document.getElementById("sort-select").addEventListener("change", loadProducts);
+document.getElementById("clear-filters").addEventListener("click", () => {
+  window.location.href = "shop.html";
+});
+
+(async () => {
+  await loadFilterOptions();
+  await loadProducts();
+})();
+</script>
+</body>
+</html>

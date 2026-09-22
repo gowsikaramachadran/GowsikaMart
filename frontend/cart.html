@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Your Cart — GowsikaMart</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div id="bm-header"></div>
+
+<div class="container">
+  <div class="breadcrumb"><a href="index.html">Home</a> / <span>Cart</span></div>
+  <h2 style="margin-bottom:16px;">Shopping Cart</h2>
+
+  <div id="cart-content"><p>Loading cart...</p></div>
+</div>
+
+<div id="bm-footer"></div>
+
+<script src="js/api.js"></script>
+<script src="js/common.js"></script>
+<script>
+const DELIVERY_CHARGE = 40;
+const FREE_DELIVERY_THRESHOLD = 499;
+
+async function loadCart() {
+  if (!requireLogin()) return;
+
+  const content = document.getElementById("cart-content");
+  try {
+    const items = await Api.getCart();
+
+    if (items.length === 0) {
+      content.innerHTML = `
+        <div class="empty-state">
+          <div class="icon">🛒</div>
+          <p>Your cart is empty.</p>
+          <a href="shop.html" class="btn btn-primary" style="margin-top:10px; display:inline-block;">Continue Shopping</a>
+        </div>`;
+      return;
+    }
+
+    const subtotal = items.reduce((sum, i) => sum + (i.product.finalPrice * i.quantity), 0);
+    const mrpTotal = items.reduce((sum, i) => sum + (i.product.price * i.quantity), 0);
+    const discount = mrpTotal - subtotal;
+    const delivery = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_CHARGE;
+    const total = subtotal + delivery;
+
+    content.innerHTML = `
+      <div class="cart-layout">
+        <div id="cart-items">
+          ${items.map(item => `
+            <div class="cart-item" data-id="${item.id}" data-product-id="${item.product.id}" data-max="${item.product.stockQuantity}">
+              <img src="${productImgSrc(item.product)}" onerror="this.src='${placeholderImage(item.product.name)}'"/>
+              <div>
+                <div style="font-weight:700; font-size:14.5px;">${item.product.name}</div>
+                <div style="color:#888; font-size:12.5px; margin:4px 0;">${item.product.brand || ""}</div>
+                <div style="font-weight:700;">${formatCurrency(item.product.finalPrice)}</div>
+                <button class="remove-link" onclick="removeItem(${item.id})">Remove</button>
+              </div>
+              <div class="qty-selector">
+                <button type="button" onclick="changeQty(${item.id}, ${item.quantity - 1})">−</button>
+                <input type="number" value="${item.quantity}" min="1" onchange="changeQty(${item.id}, this.value)" />
+                <button type="button" onclick="changeQty(${item.id}, ${item.quantity + 1})">+</button>
+              </div>
+              <div style="font-weight:800;">${formatCurrency(item.product.finalPrice * item.quantity)}</div>
+            </div>
+          `).join("")}
+          <a href="shop.html" style="display:inline-block; margin-top:10px; color: var(--brand-primary); font-weight:700;">← Continue Shopping</a>
+        </div>
+
+        <div class="cart-summary">
+          <h3 style="margin-top:0;">Order Summary</h3>
+          <div class="summary-row"><span>Subtotal</span><span>${formatCurrency(mrpTotal)}</span></div>
+          <div class="summary-row"><span>Discount</span><span style="color:var(--success);">− ${formatCurrency(discount)}</span></div>
+          <div class="summary-row"><span>Delivery Charge</span><span>${delivery === 0 ? "FREE" : formatCurrency(delivery)}</span></div>
+          <div class="summary-row total"><span>Total</span><span>${formatCurrency(total)}</span></div>
+          <button class="btn btn-accent btn-block" style="margin-top:14px;" onclick="window.location.href='checkout.html'">Proceed to Checkout</button>
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    content.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+  }
+}
+
+async function changeQty(itemId, newQty) {
+  newQty = parseInt(newQty);
+  if (isNaN(newQty) || newQty < 1) return;
+  try {
+    await Api.updateCartItem(itemId, newQty);
+    loadCart();
+    renderHeader();
+  } catch (err) { alert(err.message); loadCart(); }
+}
+
+async function removeItem(itemId) {
+  try {
+    await Api.removeCartItem(itemId);
+    loadCart();
+    renderHeader();
+  } catch (err) { alert(err.message); }
+}
+
+loadCart();
+</script>
+</body>
+</html>

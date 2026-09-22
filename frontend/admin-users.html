@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Manage Users — GowsikaMart Admin</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div class="admin-shell">
+  <aside class="admin-sidebar">
+    <div class="brand">Gowsika<span style="color:#ff6f1e;">Mart</span> Admin</div>
+    <a href="admin-dashboard.html">📊 Dashboard</a>
+    <a href="admin-products.html">📦 Products</a>
+    <a href="admin-orders.html">🧾 Orders</a>
+    <a href="admin-users.html" class="active">👥 Users</a>
+    <a href="index.html">🏬 View Storefront</a>
+    <a href="#" id="admin-logout">🚪 Logout</a>
+  </aside>
+
+  <main class="admin-main">
+    <h2 style="margin-top:0;">Manage Users</h2>
+
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody id="users-body"><tr><td colspan="7">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/common.js"></script>
+<script>
+async function loadUsers() {
+  const body = document.getElementById("users-body");
+  try {
+    const users = await Api.adminGetUsers();
+    body.innerHTML = users.map(u => `
+      <tr>
+        <td>${u.id}</td>
+        <td>${u.fullName}</td>
+        <td>${u.email}</td>
+        <td>${u.phone}</td>
+        <td>${u.role}</td>
+        <td>${u.active ? '<span class="status-pill status-DELIVERED">Active</span>' : '<span class="status-pill status-CANCELLED">Disabled</span>'}</td>
+        <td><button class="btn btn-sm ${u.active ? 'btn-danger' : 'btn-primary'}" onclick="toggleStatus(${u.id}, ${!u.active})">${u.active ? "Disable" : "Enable"}</button></td>
+      </tr>
+    `).join("");
+  } catch (err) {
+    body.innerHTML = `<tr><td colspan="7">${err.message}</td></tr>`;
+  }
+}
+
+async function toggleStatus(id, active) {
+  try {
+    await Api.adminSetUserStatus(id, active);
+    loadUsers();
+  } catch (err) { alert(err.message); }
+}
+
+if (requireAdmin()) loadUsers();
+
+document.getElementById("admin-logout").addEventListener("click", (e) => {
+  e.preventDefault();
+  clearSession();
+  window.location.href = "index.html";
+});
+</script>
+</body>
+</html>

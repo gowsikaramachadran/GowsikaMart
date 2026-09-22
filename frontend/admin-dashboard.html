@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin Dashboard — GowsikaMart</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div class="admin-shell">
+  <aside class="admin-sidebar">
+    <div class="brand">Gowsika<span style="color:#ff6f1e;">Mart</span> Admin</div>
+    <a href="admin-dashboard.html" class="active">📊 Dashboard</a>
+    <a href="admin-products.html">📦 Products</a>
+    <a href="admin-orders.html">🧾 Orders</a>
+    <a href="admin-users.html">👥 Users</a>
+    <a href="index.html">🏬 View Storefront</a>
+    <a href="#" id="admin-logout">🚪 Logout</a>
+  </aside>
+
+  <main class="admin-main">
+    <h2 style="margin-top:0;">Dashboard Overview</h2>
+    <div class="stat-cards" id="stat-cards">
+      <div class="stat-card"><div class="label">Total Products</div><div class="value">—</div></div>
+      <div class="stat-card"><div class="label">Total Users</div><div class="value">—</div></div>
+      <div class="stat-card"><div class="label">Total Orders</div><div class="value">—</div></div>
+      <div class="stat-card"><div class="label">Total Sales</div><div class="value">—</div></div>
+    </div>
+
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>Order ID</th><th>Customer</th><th>Total</th><th>Status</th><th>Date</th></tr></thead>
+        <tbody id="recent-orders-body"><tr><td colspan="5">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/common.js"></script>
+<script>
+if (requireAdmin()) {
+  Api.adminDashboard().then(stats => {
+    const cards = document.querySelectorAll("#stat-cards .value");
+    cards[0].textContent = stats.totalProducts;
+    cards[1].textContent = stats.totalUsers;
+    cards[2].textContent = stats.totalOrders;
+    cards[3].textContent = formatCurrency(stats.totalSales);
+  }).catch(err => alert(err.message));
+
+  Api.adminGetOrders().then(orders => {
+    const body = document.getElementById("recent-orders-body");
+    const recent = orders.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 10);
+    if (recent.length === 0) {
+      body.innerHTML = `<tr><td colspan="5">No orders yet.</td></tr>`;
+      return;
+    }
+    body.innerHTML = recent.map(o => `
+      <tr>
+        <td>#${o.id}</td>
+        <td>${o.customerName}</td>
+        <td>${formatCurrency(o.totalAmount)}</td>
+        <td><span class="status-pill status-${o.status}">${o.status}</span></td>
+        <td>${new Date(o.createdAt).toLocaleDateString("en-IN")}</td>
+      </tr>
+    `).join("");
+  }).catch(() => {});
+}
+
+document.getElementById("admin-logout").addEventListener("click", (e) => {
+  e.preventDefault();
+  clearSession();
+  window.location.href = "index.html";
+});
+</script>
+</body>
+</html>
