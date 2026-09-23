@@ -3,7 +3,7 @@
    Centralizes all fetch() calls to the Spring Boot backend.
    ========================================================= */
 
-const API_BASE = "http://localhost:8080/api";
+const API_BASE = "https://gowsikamart-2.onrender.com/api";
 
 function getToken() {
   return localStorage.getItem("bm_token");
